@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#04070b">
-<title>R CHART v2 — Futures Anomaly Radar</title>
+<title>R CHART v2.1 — Futures Anomaly Radar</title>
 <style>
 :root{--bg:#04070b;--panel:#0a1018;--line:#172537;--text:#f4f8ff;--muted:#74869d;--blue:#27a7ff;--green:#38e39a;--red:#ff5878;--yellow:#ffd166}
 *{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -15%,#12365b 0,#04070b 44%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans JP",sans-serif}
@@ -24,7 +24,7 @@
 </head>
 <body>
 <div class="app">
-<header class="top"><div class="brand"><div class="logo">R <i>CHART</i> <span style="font-size:9px;color:#668099">v2</span></div><div class="live"><span class="dot"></span><span id="conn">CONNECTING</span></div></div><div class="search"><input id="search" placeholder="銘柄を検索 BTC / ETH / XRP…"><button id="refresh">↻</button></div></header>
+<header class="top"><div class="brand"><div class="logo">R <i>CHART</i> <span style="font-size:9px;color:#668099">v2.1</span></div><div class="live"><span class="dot"></span><span id="conn">CONNECTING</span></div></div><div class="search"><input id="search" placeholder="銘柄を検索 BTC / ETH / XRP…"><button id="refresh">↻</button></div></header>
 <div class="tabs"><div id="g" class="tab active">GAINERS</div><div id="l" class="tab">LOSERS</div><div id="a" class="tab">ANOMALY</div></div>
 <div class="statusbar"><span>USDT-M PERPETUAL</span><span id="time">--:--:--</span></div>
 <div class="radar"><div class="radarTop"><div class="radarTitle">⚡ ANOMALY RADAR</div><button id="soundBtn" class="sound">🔕 SOUND OFF</button></div><div class="alertList" id="alertList"><div class="sub">異常候補を監視中…</div></div></div>
@@ -50,10 +50,73 @@ function select(s){selected=s;const x=coins.get(s);if(!x)return;const az=anomaly
 function draw(pct,speed){let y=120,pts=[];const bias=(pct>=0?-0.12:0.12)+(speed>=0?-0.08:0.08);for(let i=0;i<=60;i++){y+=(Math.random()-.5+bias)*Math.max(1,Math.abs(pct)/3+1);y=Math.max(15,Math.min(170,y));pts.push([i*500/60,y])}const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');$('line').setAttribute('d',d);$('area').setAttribute('d',d+' L500 190 L0 190 Z')}
 function setMode(m){mode=m;$('g').classList.toggle('active',m==='gainers');$('l').classList.toggle('active',m==='losers');$('a').classList.toggle('active',m==='anomaly');$('title').textContent=m==='gainers'?'急上昇ランキング':m==='losers'?'急落ランキング':'異常度ランキング';render()}
 function beep(){try{const ac=new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.04;o.connect(g);g.connect(ac.destination);o.start();setTimeout(()=>{o.stop();ac.close()},180)}catch(e){}}
-async function loadSymbols(){try{const r=await fetch(API+'/fapi/v1/exchangeInfo');const j=await r.json();allowed=new Set(j.symbols.filter(x=>x.status==='TRADING'&&x.quoteAsset==='USDT'&&x.contractType==='PERPETUAL').map(x=>x.symbol));$('conn').textContent='READY';connect()}catch(e){$('conn').textContent='RETRYING';fallback()}}
-function connect(){if(ws)try{ws.close()}catch(e){}ws=new WebSocket(WS);ws.onopen=()=>{$('conn').textContent='LIVE'};ws.onmessage=e=>{let arr;try{arr=JSON.parse(e.data)}catch(_){return}if(!Array.isArray(arr))return;arr.forEach(x=>{if(!allowed.has(x.s))return;const c=+x.c,o=+x.o,item={s:x.s,c,pct:o?((c-o)/o)*100:0,qv:+x.q,h:+x.h};coins.set(x.s,item);remember(item)});render();if(coins.has(selected))select(selected);$('time').textContent=new Date().toLocaleTimeString('ja-JP')};ws.onclose=()=>{$('conn').textContent='RECONNECTING';clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,3000)};ws.onerror=()=>{try{ws.close()}catch(e){}}}
-async function fallback(){try{const r=await fetch(API+'/fapi/v1/ticker/24hr');const a=await r.json();a.forEach(x=>{if(allowed.has(x.symbol)){const item={s:x.symbol,c:+x.lastPrice,pct:+x.priceChangePercent,qv:+x.quoteVolume,h:+x.highPrice};coins.set(x.symbol,item);remember(item)}});render();$('conn').textContent='REST';$('time').textContent=new Date().toLocaleTimeString('ja-JP')}catch(e){$('conn').textContent='OFFLINE';$('cards').innerHTML='<div class="sub err">市場データへ接続できません。通信環境を確認してください。</div>'}}
-$('g').onclick=()=>setMode('gainers');$('l').onclick=()=>setMode('losers');$('a').onclick=()=>setMode('anomaly');$('search').oninput=render;$('refresh').onclick=()=>{coins.clear();hist.clear();loadSymbols()};$('soundBtn').onclick=()=>{soundOn=!soundOn;$('soundBtn').textContent=soundOn?'🔔 SOUND ON':'🔕 SOUND OFF';if(soundOn)beep()};setInterval(()=>{$('time').textContent=new Date().toLocaleTimeString('ja-JP')},1000);loadSymbols();draw(1,0);
+async function loadSymbols(){
+  try{
+    const r=await fetch(API+'/fapi/v1/exchangeInfo',{cache:'no-store'});
+    if(!r.ok) throw new Error('exchangeInfo '+r.status);
+    const j=await r.json();
+    allowed=new Set(j.symbols.filter(x=>x.status==='TRADING'&&x.quoteAsset==='USDT'&&x.contractType==='PERPETUAL').map(x=>x.symbol));
+    $('conn').textContent='SYNCING';
+    await refreshTickers();
+    connect();
+  }catch(e){
+    console.error(e);
+    $('conn').textContent='RETRYING';
+    setTimeout(loadSymbols,3000);
+  }
+}
+let wsHasData=false;
+function connect(){
+  if(ws)try{ws.close()}catch(e){}
+  wsHasData=false;
+  ws=new WebSocket(WS);
+  ws.onopen=()=>{$('conn').textContent='CONNECTED'};
+  ws.onmessage=e=>{
+    let arr;try{arr=JSON.parse(e.data)}catch(_){return}
+    if(!Array.isArray(arr))return;
+    wsHasData=true;$('conn').textContent='LIVE';
+    arr.forEach(x=>{
+      if(!allowed.has(x.s))return;
+      const c=+x.c,o=+x.o,item={s:x.s,c,pct:o?((c-o)/o)*100:0,qv:+x.q,h:+x.h};
+      coins.set(x.s,item);remember(item)
+    });
+    render();if(coins.has(selected))select(selected);
+    $('time').textContent=new Date().toLocaleTimeString('ja-JP')
+  };
+  ws.onclose=()=>{if(!wsHasData)$('conn').textContent='REST LIVE';clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,5000)};
+  ws.onerror=()=>{try{ws.close()}catch(e){}};
+  setTimeout(()=>{if(!wsHasData)$('conn').textContent='REST LIVE'},5000);
+}
+async function refreshTickers(){
+  try{
+    const r=await fetch(API+'/fapi/v1/ticker/24hr',{cache:'no-store'});
+    if(!r.ok) throw new Error('ticker '+r.status);
+    const a=await r.json();
+    a.forEach(x=>{
+      if(allowed.has(x.symbol)){
+        const item={s:x.symbol,c:+x.lastPrice,pct:+x.priceChangePercent,qv:+x.quoteVolume,h:+x.highPrice};
+        coins.set(x.symbol,item);remember(item)
+      }
+    });
+    render();
+    if(coins.has(selected))select(selected);
+    if(!wsHasData)$('conn').textContent='REST LIVE';
+    $('time').textContent=new Date().toLocaleTimeString('ja-JP');
+    return true;
+  }catch(e){
+    console.error(e);
+    if(!coins.size){
+      $('conn').textContent='OFFLINE';
+      $('cards').innerHTML='<div class="sub err">市場データへ接続できません。再読み込みしてください。</div>'
+    }
+    return false;
+  }
+}
+async function fallback(){return refreshTickers()}
+$('g').onclick=()=>setMode('gainers');$('l').onclick=()=>setMode('losers');$('a').onclick=()=>setMode('anomaly');$('search').oninput=render;$('refresh').onclick=()=>{coins.clear();hist.clear();loadSymbols()};$('soundBtn').onclick=()=>{soundOn=!soundOn;$('soundBtn').textContent=soundOn?'🔔 SOUND ON':'🔕 SOUND OFF';if(soundOn)beep()};
+setInterval(()=>{$('time').textContent=new Date().toLocaleTimeString('ja-JP')},1000);
+setInterval(()=>{if(allowed.size)refreshTickers()},3000);
+loadSymbols();draw(1,0);
 </script>
 </body>
 </html>
