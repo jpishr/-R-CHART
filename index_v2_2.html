@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#04070b">
+<title>R CHART v2.2 — Early Move Radar</title>
+<style>
+:root{--bg:#04070b;--panel:#0a1018;--line:#172537;--text:#f4f8ff;--muted:#74869d;--blue:#27a7ff;--green:#38e39a;--red:#ff5878;--yellow:#ffd166}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 50% -15%,#12365b 0,#04070b 44%);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","Noto Sans JP",sans-serif}
+.app{max-width:560px;margin:auto;min-height:100vh;padding-bottom:98px}.top{position:sticky;top:0;z-index:15;padding:15px 16px;background:rgba(4,7,11,.88);backdrop-filter:blur(20px);border-bottom:1px solid rgba(255,255,255,.04)}
+.brand{display:flex;justify-content:space-between;align-items:center}.logo{font-size:25px;font-weight:950;letter-spacing:.08em}.logo i{color:var(--red);font-style:normal}.live{font-size:10px;color:#8ea0b5}.dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--green);box-shadow:0 0 14px var(--green);margin-right:5px}
+.search{display:flex;gap:8px;margin-top:11px}.search input{flex:1;border:1px solid #1b2c40;background:#09111b;color:#fff;border-radius:12px;padding:12px;outline:none}.search button{background:#0c1724;border:1px solid #1b2c40;color:#b9dfff;border-radius:12px;padding:0 14px}
+.tabs{display:grid;grid-template-columns:repeat(3,1fr);margin:12px 16px 0;background:#080e16;border:1px solid var(--line);border-radius:14px;padding:4px}.tab{text-align:center;padding:10px 4px;border-radius:10px;color:var(--muted);font-weight:850;font-size:11px}.tab.active{color:#fff;background:linear-gradient(135deg,#116cae,#12355a)}
+.statusbar{display:flex;justify-content:space-between;padding:10px 16px 2px;font-size:10px;color:var(--muted)}.section{padding:12px 16px}.head{display:flex;justify-content:space-between;align-items:end;margin-bottom:9px}.title{font-weight:850;font-size:14px}.sub{font-size:10px;color:var(--muted)}
+.cards{display:grid;gap:7px}.coin{display:grid;grid-template-columns:34px 1fr auto;align-items:center;gap:9px;background:linear-gradient(180deg,#0a121c,#070d14);border:1px solid #142336;border-radius:13px;padding:11px;cursor:pointer}.rank{font-size:10px;color:#52667e;text-align:center}.name{font-size:13px;font-weight:900}.meta{font-size:9px;color:#6f8197;margin-top:3px}.price{text-align:right;font-size:12px;font-weight:850}.chg{font-size:11px;margin-top:3px}.up{color:var(--green)}.down{color:var(--red)}
+.radar{margin:12px 16px 0;padding:12px;border:1px solid #1e3b55;border-radius:16px;background:linear-gradient(135deg,rgba(15,73,115,.28),rgba(7,12,20,.82))}.radarTop{display:flex;justify-content:space-between;align-items:center}.radarTitle{font-weight:900;color:#8fe0ff;font-size:12px}.sound{border:1px solid #244564;background:#08131e;color:#ccecff;border-radius:10px;padding:7px 10px;font-size:10px}
+.alertList{display:grid;gap:7px;margin-top:10px}.alertItem{display:grid;grid-template-columns:1fr auto;gap:8px;padding:10px;border:1px solid #183149;border-radius:12px;background:#08111a}.badge{display:inline-block;padding:3px 7px;border-radius:999px;font-size:9px;font-weight:900;margin-right:6px}.b-high{background:rgba(255,88,120,.14);color:#ff7b95}.b-med{background:rgba(255,209,102,.14);color:#ffd166}.b-low{background:rgba(105,221,255,.12);color:#83dcff}.score{font-weight:950;font-size:18px}.score small{display:block;font-size:8px;color:var(--muted);font-weight:700}
+.chart{margin:12px 16px 0;border:1px solid #16283b;border-radius:16px;background:#070d14;overflow:hidden}.charthead{display:flex;justify-content:space-between;padding:13px}.chartname{font-weight:900}.canvas{height:190px}.canvas svg{width:100%;height:100%;display:block}.grid line{stroke:#142131}.line{fill:none;stroke:#5fd1ff;stroke-width:2.5}.area{fill:url(#fill)}
+.ai{margin:12px 16px;padding:13px;border-radius:16px;border:1px solid #183756;background:linear-gradient(135deg,rgba(15,73,115,.3),rgba(7,12,20,.75))}.ai b{color:#83dcff;font-size:12px}.ai p{margin:7px 0 0;color:#aab9c9;font-size:11px;line-height:1.6}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:12px 16px}.stat{background:#08111a;border:1px solid #16283b;border-radius:12px;padding:10px}.stat span{display:block;color:var(--muted);font-size:8px}.stat b{font-size:12px}.note{text-align:center;color:#526277;font-size:9px;padding:2px 18px 14px}
+.bottom{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(560px,100%);display:grid;grid-template-columns:repeat(3,1fr);padding:10px 16px calc(10px + env(safe-area-inset-bottom));background:rgba(4,7,11,.92);backdrop-filter:blur(20px);border-top:1px solid #142235}.nav{text-align:center;color:#61748c;font-size:9px}.nav b{display:block;font-size:18px;color:inherit;margin-bottom:2px}.nav.active{color:#72d8ff}.err{color:#ff8ca3}
+</style>
+</head>
+<body>
+<div class="app">
+<header class="top"><div class="brand"><div class="logo">R <i>CHART</i> <span style="font-size:9px;color:#668099">v2.2</span></div><div class="live"><span class="dot"></span><span id="conn">CONNECTING</span></div></div><div class="search"><input id="search" placeholder="銘柄を検索 BTC / ETH / XRP…"><button id="refresh">↻</button></div></header>
+<div class="tabs"><div id="g" class="tab active">GAINERS</div><div id="l" class="tab">LOSERS</div><div id="a" class="tab">ANOMALY</div></div>
+<div class="statusbar"><span>USDT-M PERPETUAL</span><span id="time">--:--:--</span></div>
+<div class="radar"><div class="radarTop"><div class="radarTitle">⚡ ANOMALY RADAR</div><button id="soundBtn" class="sound">🔕 SOUND OFF</button></div><div class="alertList" id="alertList"><div class="sub">異常候補を監視中…</div></div></div>
+<section class="section"><div class="head"><div><div class="title" id="title">急上昇ランキング</div><div class="sub">24H CHANGE · REAL-TIME</div></div><div class="sub" id="count">0 symbols</div></div><div class="cards" id="cards"></div></section>
+<div class="stats"><div class="stat"><span>SELECTED</span><b id="stSymbol">BTC</b></div><div class="stat"><span>24H CHANGE</span><b id="stPct">--</b></div><div class="stat"><span>ANOMALY</span><b id="stScore">--</b></div></div>
+<div class="chart"><div class="charthead"><div><div class="chartname" id="chartName">BTC / USDT</div><div class="sub">LIVE PRICE · VISUAL TREND</div></div><div id="chartChange" class="up">--</div></div><div class="canvas"><svg viewBox="0 0 500 190" preserveAspectRatio="none"><defs><linearGradient id="fill" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#27a7ff" stop-opacity=".27"/><stop offset="1" stop-color="#27a7ff" stop-opacity="0"/></linearGradient></defs><g class="grid"><line x1="0" y1="38" x2="500" y2="38"/><line x1="0" y1="76" x2="500" y2="76"/><line x1="0" y1="114" x2="500" y2="114"/><line x1="0" y1="152" x2="500" y2="152"/></g><path id="area" class="area"/><path id="line" class="line"/></svg></div></div>
+<div class="ai"><b>✦ MARKET SCAN</b><p id="scan">市場データへ接続しています。</p></div>
+<div class="note">公開市場データのみ使用。注文・APIキー入力・自動売買は行いません。EARLY MOVE SCOREは直近の速度・加速度・継続性・出来高変化を組み合わせた独自参考指標です。</div>
+<nav class="bottom"><div class="nav active"><b>⌂</b>MARKET</div><div class="nav"><b>◈</b>ALERTS</div><div class="nav"><b>⚙</b>SETTINGS</div></nav>
+</div>
+<script>
+const API='https://fapi.binance.com', WS='wss://fstream.binance.com/ws/!miniTicker@arr';
+let allowed=new Set(), coins=new Map(), mode='gainers', selected='BTCUSDT', ws, reconnectTimer;
+const hist=new Map(); let soundOn=false, lastAlertAt=0; const $=id=>document.getElementById(id);
+function fmt(n){if(!Number.isFinite(n))return '--';if(n<1)return n.toPrecision(5);return n.toLocaleString(undefined,{maximumFractionDigits:2})}
+function vol(n){if(n>=1e9)return '$'+(n/1e9).toFixed(2)+'B';if(n>=1e6)return '$'+(n/1e6).toFixed(0)+'M';return '$'+(n/1e3).toFixed(0)+'K'}
+function remember(x){const a=hist.get(x.s)||[];a.push({t:Date.now(),p:x.c,q:x.qv});while(a.length>18)a.shift();hist.set(x.s,a)}
+function anomaly(x){
+  const h=hist.get(x.s)||[];
+  if(h.length<6) return {score:0,level:'LOW',speed:0,accel:0,consistency:0,volPulse:1};
+  const prices=h.map(z=>z.p), qs=h.map(z=>z.q);
+  const first=prices[0], last=prices[prices.length-1];
+  const speed=first?((last-first)/first)*100:0;
+
+  const mid=Math.floor(prices.length/2);
+  const p0=prices[0], pm=prices[mid], p1=prices[prices.length-1];
+  const prev=p0?((pm-p0)/p0)*100:0;
+  const recent=pm?((p1-pm)/pm)*100:0;
+  const accel=recent-prev;
+
+  const rets=[];
+  for(let i=1;i<prices.length;i++){
+    const r=prices[i-1]?((prices[i]-prices[i-1])/prices[i-1])*100:0;
+    if(Number.isFinite(r)) rets.push(r);
+  }
+  const dir=Math.sign(speed)||1;
+  const consistency=rets.length?rets.filter(r=>Math.sign(r)===dir && Math.abs(r)>0.0001).length/rets.length:0;
+
+  const qd=[];
+  for(let i=1;i<qs.length;i++) qd.push(Math.max(0,qs[i]-qs[i-1]));
+  const recentQ=qd.slice(-3).reduce((a,b)=>a+b,0)/Math.max(1,Math.min(3,qd.length));
+  const baseQ=qd.slice(0,Math.max(1,qd.length-3));
+  const baseAvg=baseQ.length?baseQ.reduce((a,b)=>a+b,0)/baseQ.length:recentQ||1;
+  let volPulse=baseAvg>0?recentQ/baseAvg:1;
+  if(!Number.isFinite(volPulse)||volPulse<0) volPulse=1;
+  volPulse=Math.min(volPulse,8);
+
+  const speedScore=Math.min(34,Math.abs(speed)*28);
+  const accelScore=Math.min(24,Math.abs(accel)*34);
+  const consistencyScore=Math.min(18,consistency*18);
+  const volumeScore=Math.min(16,Math.max(0,volPulse-1)*5.5);
+  const contextScore=Math.min(7,Math.abs(x.pct)*0.25);
+
+  let score=speedScore+accelScore+consistencyScore+volumeScore+contextScore;
+  score=Math.max(0,Math.min(99,score));
+  const level=score>=78?'HIGH':score>=52?'MEDIUM':'LOW';
+  return {score,level,speed,accel,consistency,volPulse};
+}
+function topAnomalies(){return[...coins.values()].map(x=>({x,a:anomaly(x)})).sort((u,v)=>v.a.score-u.a.score).slice(0,5)}
+function renderAlerts(){
+  const top=topAnomalies();
+  $('alertList').innerHTML=top.map(z=>{
+    const cls=z.a.level==='HIGH'?'b-high':z.a.level==='MEDIUM'?'b-med':'b-low';
+    return `<div class="alertItem" onclick="select('${z.x.s}')"><div><span class="badge ${cls}">${z.a.level}</span><b>${z.x.s.replace('USDT','')}</b><div class="meta">SPEED ${z.a.speed>=0?'+':''}${z.a.speed.toFixed(2)}% · ACCEL ${z.a.accel>=0?'+':''}${z.a.accel.toFixed(2)} · VOL x${z.a.volPulse.toFixed(1)}</div></div><div class="score">${z.a.score.toFixed(0)}<small>SCORE</small></div></div>`;
+  }).join('');
+  const h=top.find(z=>z.a.level==='HIGH');
+  if(h&&soundOn&&Date.now()-lastAlertAt>15000){beep();lastAlertAt=Date.now()}
+}
+function render(){const q=$('search').value.trim().toUpperCase();let a=[...coins.values()].filter(x=>allowed.has(x.s)&&(!q||x.s.includes(q)));if(mode==='gainers')a=a.filter(x=>x.pct>0).sort((x,y)=>y.pct-x.pct);if(mode==='losers')a=a.filter(x=>x.pct<0).sort((x,y)=>x.pct-y.pct);if(mode==='anomaly')a=a.sort((x,y)=>anomaly(y).score-anomaly(x).score);a=a.slice(0,20);$('cards').innerHTML=a.map((x,i)=>{const az=anomaly(x);return `<div class="coin" data-s="${x.s}"><div class="rank">#${i+1}</div><div><div class="name">${x.s.replace('USDT','')}/USDT</div><div class="meta">VOL ${vol(x.qv)} · SCORE ${az.score.toFixed(0)}</div></div><div class="price">$${fmt(x.c)}<div class="chg ${x.pct>=0?'up':'down'}">${x.pct>=0?'+':''}${x.pct.toFixed(2)}%</div></div></div>`}).join('')||'<div class="sub">データ取得中…</div>';$('count').textContent=allowed.size+' symbols';document.querySelectorAll('.coin').forEach(el=>el.onclick=()=>select(el.dataset.s));renderAlerts()}
+function select(s){selected=s;const x=coins.get(s);if(!x)return;const az=anomaly(x);$('chartName').textContent=s.replace('USDT','')+' / USDT';$('chartChange').textContent=(x.pct>=0?'+':'')+x.pct.toFixed(2)+'%';$('chartChange').className=x.pct>=0?'up':'down';$('stSymbol').textContent=s.replace('USDT','');$('stPct').textContent=(x.pct>=0?'+':'')+x.pct.toFixed(2)+'%';$('stPct').className=x.pct>=0?'up':'down';$('stScore').textContent=az.score.toFixed(0);$('scan').textContent=`${s.replace('USDT','')}：現在値 $${fmt(x.c)} / SCORE ${az.score.toFixed(0)} (${az.level}) / SPEED ${az.speed>=0?'+':''}${az.speed.toFixed(2)}% / ACCEL ${az.accel>=0?'+':''}${az.accel.toFixed(2)} / VOL x${az.volPulse.toFixed(1)} / 継続性 ${(az.consistency*100).toFixed(0)}%。`;draw(x.pct,az.speed)}
+function draw(pct,speed){let y=120,pts=[];const bias=(pct>=0?-0.12:0.12)+(speed>=0?-0.08:0.08);for(let i=0;i<=60;i++){y+=(Math.random()-.5+bias)*Math.max(1,Math.abs(pct)/3+1);y=Math.max(15,Math.min(170,y));pts.push([i*500/60,y])}const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' ');$('line').setAttribute('d',d);$('area').setAttribute('d',d+' L500 190 L0 190 Z')}
+function setMode(m){mode=m;$('g').classList.toggle('active',m==='gainers');$('l').classList.toggle('active',m==='losers');$('a').classList.toggle('active',m==='anomaly');$('title').textContent=m==='gainers'?'急上昇ランキング':m==='losers'?'急落ランキング':'異常度ランキング';render()}
+function beep(){try{const ac=new(window.AudioContext||window.webkitAudioContext)();const o=ac.createOscillator(),g=ac.createGain();o.frequency.value=880;g.gain.value=.04;o.connect(g);g.connect(ac.destination);o.start();setTimeout(()=>{o.stop();ac.close()},180)}catch(e){}}
+async function loadSymbols(){
+  try{
+    const r=await fetch(API+'/fapi/v1/exchangeInfo',{cache:'no-store'});
+    if(!r.ok) throw new Error('exchangeInfo '+r.status);
+    const j=await r.json();
+    allowed=new Set(j.symbols.filter(x=>x.status==='TRADING'&&x.quoteAsset==='USDT'&&x.contractType==='PERPETUAL').map(x=>x.symbol));
+    $('conn').textContent='SYNCING';
+    await refreshTickers();
+    connect();
+  }catch(e){
+    console.error(e);
+    $('conn').textContent='RETRYING';
+    setTimeout(loadSymbols,3000);
+  }
+}
+let wsHasData=false;
+function connect(){
+  if(ws)try{ws.close()}catch(e){}
+  wsHasData=false;
+  ws=new WebSocket(WS);
+  ws.onopen=()=>{$('conn').textContent='CONNECTED'};
+  ws.onmessage=e=>{
+    let arr;try{arr=JSON.parse(e.data)}catch(_){return}
+    if(!Array.isArray(arr))return;
+    wsHasData=true;$('conn').textContent='LIVE';
+    arr.forEach(x=>{
+      if(!allowed.has(x.s))return;
+      const c=+x.c,o=+x.o,item={s:x.s,c,pct:o?((c-o)/o)*100:0,qv:+x.q,h:+x.h};
+      coins.set(x.s,item);remember(item)
+    });
+    render();if(coins.has(selected))select(selected);
+    $('time').textContent=new Date().toLocaleTimeString('ja-JP')
+  };
+  ws.onclose=()=>{if(!wsHasData)$('conn').textContent='REST LIVE';clearTimeout(reconnectTimer);reconnectTimer=setTimeout(connect,5000)};
+  ws.onerror=()=>{try{ws.close()}catch(e){}};
+  setTimeout(()=>{if(!wsHasData)$('conn').textContent='REST LIVE'},5000);
+}
+async function refreshTickers(){
+  try{
+    const r=await fetch(API+'/fapi/v1/ticker/24hr',{cache:'no-store'});
+    if(!r.ok) throw new Error('ticker '+r.status);
+    const a=await r.json();
+    a.forEach(x=>{
+      if(allowed.has(x.symbol)){
+        const item={s:x.symbol,c:+x.lastPrice,pct:+x.priceChangePercent,qv:+x.quoteVolume,h:+x.highPrice};
+        coins.set(x.symbol,item);remember(item)
+      }
+    });
+    render();
+    if(coins.has(selected))select(selected);
+    if(!wsHasData)$('conn').textContent='REST LIVE';
+    $('time').textContent=new Date().toLocaleTimeString('ja-JP');
+    return true;
+  }catch(e){
+    console.error(e);
+    if(!coins.size){
+      $('conn').textContent='OFFLINE';
+      $('cards').innerHTML='<div class="sub err">市場データへ接続できません。再読み込みしてください。</div>'
+    }
+    return false;
+  }
+}
+async function fallback(){return refreshTickers()}
+$('g').onclick=()=>setMode('gainers');$('l').onclick=()=>setMode('losers');$('a').onclick=()=>setMode('anomaly');$('search').oninput=render;$('refresh').onclick=()=>{coins.clear();hist.clear();loadSymbols()};$('soundBtn').onclick=()=>{soundOn=!soundOn;$('soundBtn').textContent=soundOn?'🔔 SOUND ON':'🔕 SOUND OFF';if(soundOn)beep()};
+setInterval(()=>{$('time').textContent=new Date().toLocaleTimeString('ja-JP')},1000);
+setInterval(()=>{if(allowed.size)refreshTickers()},3000);
+loadSymbols();draw(1,0);
+</script>
+</body>
+</html>
